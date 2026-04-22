@@ -1,0 +1,31 @@
+attribute,data_type,note
+CAND_ID,VARCHAR2(9),FEC candidate identifier
+CYCLE,NUMBER(4),election cycle year
+STATE,VARCHAR2(2),State abbreviation
+DISTRICT,NUMBER(3),Congressional district number
+CAND_NAME_FIRST,VARCHAR2(100),Candidate first name from returns
+CAND_NAME_LAST,VARCHAR2(100),Candidate last name from returns
+CAND_NAME,VARCHAR2(200),Candidate full name from FEC summary
+RESULTS_PARTY,VARCHAR2(10),Party label from election returns
+CAND_PTY_AFFILIATION,VARCHAR2(3),FEC candidate party code
+CAND_ICI,VARCHAR2(1),incumbent challenger open-seat code
+OUTCOME,NUMBER(1),general election win indicator
+UNOPPOSED,BOOLEAN,whether candidate was unopposed
+VOTES,NUMBER(14),General election votes
+VOTE_SHARE,"NUMBER(7,4)",General election vote share
+TTL_RECEIPTS,"NUMBER(14,2)",Total campaign receipts
+TRANS_FROM_AUTH,"NUMBER(14,2)",Transfers from authorized committees
+TTL_DISB,"NUMBER(14,2)",Total campaign disbursements
+TRANS_TO_AUTH,"NUMBER(14,2)",Transfers to authorized committees
+COH_COP,"NUMBER(14,2)",cash on hand at close of period
+CAND_CONTRIB,"NUMBER(14,2)",Candidate self-contributions
+CAND_LOANS,"NUMBER(14,2)",Candidate loans to campaign
+TTL_INDIV_CONTRIB,"NUMBER(14,2)",Total individual contributions
+OTHER_POL_CMTE_CONTRIB,"NUMBER(14,2)",Other political committee contributions
+POL_PTY_CONTRIB,"NUMBER(14,2)",Political party contributions
+LOG1P_TTL_RECEIPTS,FLOAT,ln(1 + total receipts)
+BURN_RATE,FLOAT,Total disbursements divided by total receipts
+CASH_RATIO,FLOAT,Cash on hand at close divided by total receipts
+INDIV_SHARE,FLOAT,Individual contributions divided by total receipts
+OTHER_CMTE_SHARE,FLOAT,Other committee contributions divided by total receipts
+PARTY_SHARE,FLOAT,Party contributions divided by total receipts
