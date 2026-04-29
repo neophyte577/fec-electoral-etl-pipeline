@@ -1,0 +1,28 @@
+attribute,data_type,note
+cand_id,object,FEC candidate identifier
+cycle,int64,Election cycle year
+state,object,State abbreviation
+district,int64,Congressional district number
+cand_name,object,Candidate full name from FEC candidate summary
+party,object,"Analysis party label derived from election-return party; DEM, REP, LIB, GRN, IND retained and other labels collapsed to OTH"
+incumbency,object,Incumbent/challenger/open-seat code after manual cleanup and renaming from CAND_ICI
+outcome,int64,General-election win indicator
+unopposed,bool,Whether the candidate was unopposed; prep notebook removes unopposed and near-unopposed observations before final analysis frame
+votes,float64,General-election votes
+vote_share,float64,General-election vote share
+ttl_receipts,float64,Total campaign receipts after prep filtering; rows with receipts below the notebook threshold are excluded
+log1p_ttl_receipts,float64,Natural log of 1 plus total campaign receipts
+coh_cop,float64,Cash on hand at close of period
+ttl_disb,float64,Total campaign disbursements
+burn_rate,float64,Total disbursements divided by total receipts; clipped in the prep notebook at the 1st and 99th percentiles with other finance ratios
+cash_ratio,float64,Cash on hand at close divided by total receipts; clipped in the prep notebook at the 1st and 99th percentiles with other finance ratios
+indiv_share,float64,Total individual contributions divided by total receipts; clipped in the prep notebook at the 1st and 99th percentiles with other finance ratios
+other_cmte_share,float64,Other political committee contributions divided by total receipts; clipped in the prep notebook at the 1st and 99th percentiles with other finance ratios
+party_share,float64,Political party contributions divided by total receipts; clipped in the prep notebook at the 1st and 99th percentiles with other finance ratios
+itemized_indiv_share,float64,Final individual-donor-composition proxy: itemized individual contribution amount divided by total individual contributions after prep corrections; values are bounded by denominator cleanup and zero-filled when no individual contribution denominator is available
+total_outside_support,float64,"Combined favorable outside-spending proxy, equal to IND_EXP_SUPPORT plus COMM_SUPPORT after race-contextual aggregation"
+total_outside_oppose,float64,"Combined unfavorable outside-spending proxy, equal to IND_EXP_OPPOSE plus COMM_OPPOSE after race-contextual aggregation"
+log1p_total_outside_support,float64,Natural log of 1 plus total favorable outside spending
+log1p_total_outside_oppose,float64,Natural log of 1 plus total unfavorable outside spending
+has_party_coord_exp,int64,"Indicator equal to 1 when direct coordinated party expenditures are positive, otherwise 0"
+log1p_party_coord_exp,float64,Natural log of 1 plus direct coordinated party expenditures

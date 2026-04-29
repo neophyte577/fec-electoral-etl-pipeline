@@ -1,0 +1,35 @@
+attribute,data_type,note
+CAND_ID,VARCHAR2(9),FEC candidate identifier
+CYCLE,NUMBER(4),Election cycle year
+STATE,VARCHAR2(2),State abbreviation
+DISTRICT,NUMBER(3),Congressional district number
+CAND_NAME_FIRST,VARCHAR2(100),Candidate first name from election returns
+CAND_NAME_LAST,VARCHAR2(100),Candidate last name from election returns
+CAND_NAME,VARCHAR2(200),Candidate full name from FEC candidate summary
+RESULTS_PARTY,VARCHAR2(10),Party label from election returns
+CAND_PTY_AFFILIATION,VARCHAR2(3),FEC candidate party affiliation code from candidate summary
+CAND_ICI,VARCHAR2(1),FEC incumbent/challenger/open-seat code
+OUTCOME,NUMBER(1),General-election win indicator
+UNOPPOSED,BOOLEAN,Whether the candidate was unopposed in the election-return data
+VOTES,NUMBER(14),General-election votes
+VOTE_SHARE,"NUMBER(7,4)",General-election vote share
+TTL_RECEIPTS,"NUMBER(14,2)",Total campaign receipts from candidate summary
+TRANS_FROM_AUTH,"NUMBER(14,2)",Transfers from authorized committees
+TTL_DISB,"NUMBER(14,2)",Total campaign disbursements from candidate summary
+TRANS_TO_AUTH,"NUMBER(14,2)",Transfers to authorized committees
+COH_COP,"NUMBER(14,2)",Cash on hand at close of period
+CAND_CONTRIB,"NUMBER(14,2)",Candidate self-contributions
+CAND_LOANS,"NUMBER(14,2)",Candidate loans to campaign
+TTL_INDIV_CONTRIB,"NUMBER(14,2)",Total individual contributions from candidate summary
+OTHER_POL_CMTE_CONTRIB,"NUMBER(14,2)",Other political committee contributions from candidate summary
+POL_PTY_CONTRIB,"NUMBER(14,2)",Political party contributions from candidate summary
+ITEMIZED_INDIV_AMOUNT,"NUMBER(14,2)",Itemized individual contributions aggregated from individual-contribution records joined through the candidate principal campaign committee; raw aggregate may be null when no matching itemized aggregate was joined
+ITEMIZED_INDIV_MISSING,NUMBER(1),"Indicator equal to 1 when ITEMIZED_INDIV_AMOUNT is null, otherwise 0"
+ITEMIZED_INDIV_AMOUNT_MODEL,"NUMBER(14,2)","Model-ready itemized individual contribution amount, with null ITEMIZED_INDIV_AMOUNT values set to 0"
+ITEMIZED_INDIV_SHARE_OF_INDIV,FLOAT,Raw itemized individual amount divided by total individual contributions; emitted by the base pull as a diagnostic ratio and may be null when the denominator is zero
+ITEMIZED_INDIV_SHARE_OF_INDIV_MODEL,FLOAT,Model-ready itemized individual amount divided by total individual contributions; emitted by the base pull as a diagnostic ratio and may be null when the denominator is zero
+IND_EXP_SUPPORT,"NUMBER(14,2)",Race-contextual favorable independent expenditures: direct 24E support for candidate plus 24A opposition to other candidates in the same House race
+IND_EXP_OPPOSE,"NUMBER(14,2)",Race-contextual unfavorable independent expenditures: direct 24A opposition to candidate plus 24E support for other candidates in the same House race
+COMM_SUPPORT,"NUMBER(14,2)",Race-contextual favorable communication costs: direct 24F communication costs for candidate plus 24N communication costs against other candidates in the same House race
+COMM_OPPOSE,"NUMBER(14,2)",Race-contextual unfavorable communication costs: direct 24N communication costs against candidate plus 24F communication costs for other candidates in the same House race
+PARTY_COORD_EXP,"NUMBER(14,2)",Direct coordinated party expenditures for the candidate using transaction type 24C
