@@ -1,3 +1,4 @@
 figures/
 .env
 *.zip
+__pycache__/
