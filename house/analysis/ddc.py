@@ -732,43 +732,6 @@ def _ordered_unique(values):
     return sorted(pd.Series(values).dropna().unique())
 
 
-def _x_score(x, transform="log1p"):
-    x = np.asarray(x, dtype=float)
-
-    if transform is None or transform == "identity":
-        return x
-
-    if transform == "log1p":
-        if np.nanmin(x) <= -1:
-            raise ValueError("log1p transform requires X > -1.")
-        return np.log1p(x)
-
-    raise ValueError("Unknown transform. Use 'log1p', 'identity', or None.")
-
-
-def _quantile_edges(values, n_bins=10):
-    values = np.asarray(values, dtype=float)
-    values = values[np.isfinite(values)]
-
-    if len(values) == 0:
-        raise ValueError("No finite values supplied for bin construction.")
-
-    edges = np.unique(np.quantile(values, np.linspace(0, 1, n_bins + 1)))
-
-    if len(edges) < 2:
-        raise ValueError("Unable to construct bins because the binning variable is constant.")
-
-    edges[0] = -np.inf
-    edges[-1] = np.inf
-
-    return edges
-
-
-def _bin_codes(values, edges):
-    codes = pd.cut(values, bins=edges, labels=False, include_lowest=True)
-    return pd.Series(codes).astype("Int64").to_numpy()
-
-
 def _cycle_masks(source, cycle_col, cycle, regime_rule):
     cycle_mask = source[cycle_col].eq(cycle).to_numpy()
     regime_mask = _as_mask(source, regime_rule).to_numpy()
@@ -841,13 +804,7 @@ def _fit_log_multiplier_rule(H, multiplier, ridge=1e-6):
         raise ValueError("No valid positive multipliers available for fitting.")
 
     if H.shape[1] == 0:
-        return {
-            "intercept": float(np.mean(np.log(multiplier))),
-            "coef": np.array([]),
-            "center": np.array([]),
-            "scale": np.array([]),
-            "ridge": ridge,
-        }
+        return {"intercept": float(np.mean(np.log(multiplier))), "coef": np.array([]), "center": np.array([]), "scale": np.array([]), "ridge": ridge}
 
     center = H.mean(axis=0)
     scale = _safe_scale(H)
@@ -976,125 +933,6 @@ def _training_exact_entropy_weights(
 
 # routines
 
-def bin_mult_calibrator(
-    df,
-    x,
-    y,
-    cycle_col,
-    holdout_cycle,
-    regime,
-    base_mask=None,
-    dropna=True,
-    terms=("X", "Y", "X^2", "XY"),
-    train_cycles=None,
-    n_bins=10,
-    bin_transform="log1p",
-    bin_stat="mean",
-    tol=1e-9,
-    balance_tol=1e-6,
-    std_balance_tol=1e-8,
-    maxiter=1000,
-):
-    source, work = _prepare_frame(df, x=x, y=y, base_mask=base_mask, dropna=dropna)
-
-    if cycle_col not in source.columns:
-        raise ValueError(f"Column '{cycle_col}' not found.")
-
-    x_values = work["X"].to_numpy()
-    y_values = work["Y"].to_numpy()
-    train_cycles = _default_train_cycles(source, cycle_col, holdout_cycle, train_cycles)
-
-    exact_table, fit_table = _training_exact_entropy_weights(
-        source=source,
-        x_values=x_values,
-        y_values=y_values,
-        cycle_col=cycle_col,
-        train_cycles=train_cycles,
-        regime=regime,
-        terms=terms,
-        tol=tol,
-        balance_tol=balance_tol,
-        std_balance_tol=std_balance_tol,
-        maxiter=maxiter,
-    )
-
-    exact_table["z"] = _x_score(exact_table["x"].to_numpy(), transform=bin_transform)
-
-    edges = _quantile_edges(exact_table["z"].to_numpy(), n_bins=n_bins)
-    exact_table["bin"] = _bin_codes(exact_table["z"].to_numpy(), edges)
-
-    if bin_stat == "mean":
-        learned_bins = exact_table.groupby("bin", dropna=False)["multiplier"].mean()
-    elif bin_stat == "median":
-        learned_bins = exact_table.groupby("bin", dropna=False)["multiplier"].median()
-    else:
-        raise ValueError("bin_stat must be 'mean' or 'median'.")
-
-    n_actual_bins = len(edges) - 1
-    global_multiplier = float(exact_table["multiplier"].mean())
-    multipliers = np.full(n_actual_bins, global_multiplier)
-
-    for idx, value in learned_bins.items():
-        if pd.notna(idx):
-            multipliers[int(idx)] = float(value)
-
-    P_holdout, A_holdout = _cycle_masks(source, cycle_col, holdout_cycle, regime)
-
-    if int(P_holdout.sum()) == 0:
-        raise ValueError(f"Holdout cycle '{holdout_cycle}' has no benchmark rows.")
-
-    if int(A_holdout.sum()) == 0:
-        raise ValueError(f"Holdout cycle '{holdout_cycle}' has no restricted rows.")
-
-    z_holdout = _x_score(x_values[A_holdout], transform=bin_transform)
-    holdout_bins = _bin_codes(z_holdout, edges)
-
-    raw = np.array([
-        multipliers[int(code)] if pd.notna(code) else global_multiplier
-        for code in holdout_bins
-    ], dtype=float)
-
-    if np.any(~np.isfinite(raw)) or np.any(raw < 0):
-        raise ValueError("Learned bin multipliers must be finite and nonnegative.")
-
-    if np.isclose(raw.sum(), 0):
-        raw = np.ones_like(raw)
-
-    w_holdout = raw / raw.sum()
-
-    H_P_holdout = _calibration_features(source.loc[P_holdout], x_values[P_holdout], y_values[P_holdout], terms)
-    H_A_holdout = _calibration_features(source.loc[A_holdout], x_values[A_holdout], y_values[A_holdout], terms)
-
-    result = _repair_eval_row(
-        method=f"binned_multiplier_{bin_stat}",
-        holdout_cycle=holdout_cycle,
-        train_cycles=train_cycles,
-        x_P=x_values[P_holdout],
-        y_P=y_values[P_holdout],
-        x_A=x_values[A_holdout],
-        y_A=y_values[A_holdout],
-        w=w_holdout,
-        H_P=H_P_holdout,
-        H_A=H_A_holdout,
-        terms=terms,
-    )
-
-    bin_table = pd.DataFrame({
-        "bin": np.arange(n_actual_bins),
-        "left": edges[:-1],
-        "right": edges[1:],
-        "multiplier": multipliers,
-    })
-
-    return {
-        "result": pd.DataFrame([result]),
-        "fit_table": fit_table,
-        "bin_table": bin_table,
-        "exact_training_weights": exact_table,
-        "holdout_weights": pd.Series(w_holdout, index=source.index[A_holdout], name="w_binned_multiplier"),
-    }
-
-
 def lin_mult_calibrator(
     df,
     x,
@@ -1139,11 +977,7 @@ def lin_mult_calibrator(
     H_train = exact_table.loc[:, list(terms)].to_numpy(dtype=float) if len(terms) else np.empty((len(exact_table), 0))
     multiplier_train = exact_table["multiplier"].to_numpy(dtype=float)
 
-    model = _fit_log_multiplier_rule(
-        H_train,
-        multiplier_train,
-        ridge=ridge,
-    )
+    model = _fit_log_multiplier_rule(H_train, multiplier_train, ridge=ridge)
 
     P_holdout, A_holdout = _cycle_masks(source, cycle_col, holdout_cycle, regime)
 
@@ -1211,9 +1045,6 @@ def prospective_repair_comparison(
     dropna=True,
     terms=("X", "Y", "X^2", "XY"),
     train_cycles=None,
-    n_bins=10,
-    bin_transform="log1p",
-    bin_stat="mean",
     ridge=1e-6,
     clip_log_multiplier=None,
     tol=1e-9,
@@ -1221,55 +1052,12 @@ def prospective_repair_comparison(
     std_balance_tol=1e-8,
     maxiter=1000,
 ):
-    binned = bin_mult_calibrator(
-        df=df,
-        x=x,
-        y=y,
-        cycle_col=cycle_col,
-        holdout_cycle=holdout_cycle,
-        regime=regime,
-        base_mask=base_mask,
-        dropna=dropna,
-        terms=terms,
-        train_cycles=train_cycles,
-        n_bins=n_bins,
-        bin_transform=bin_transform,
-        bin_stat=bin_stat,
-        tol=tol,
-        balance_tol=balance_tol,
-        std_balance_tol=std_balance_tol,
-        maxiter=maxiter,
-    )
+    linear = lin_mult_calibrator(df=df, x=x, y=y, cycle_col=cycle_col, holdout_cycle=holdout_cycle, regime=regime, base_mask=base_mask, dropna=dropna, terms=terms,
+                                 train_cycles=train_cycles, ridge=ridge, clip_log_multiplier=clip_log_multiplier, tol=tol, balance_tol=balance_tol,
+                                 std_balance_tol=std_balance_tol, maxiter=maxiter)
 
-    linear = lin_mult_calibrator(
-        df=df,
-        x=x,
-        y=y,
-        cycle_col=cycle_col,
-        holdout_cycle=holdout_cycle,
-        regime=regime,
-        base_mask=base_mask,
-        dropna=dropna,
-        terms=terms,
-        train_cycles=train_cycles,
-        ridge=ridge,
-        clip_log_multiplier=clip_log_multiplier,
-        tol=tol,
-        balance_tol=balance_tol,
-        std_balance_tol=std_balance_tol,
-        maxiter=maxiter,
-    )
+    return {"result": linear["result"], "linear": linear}
 
-    result = pd.concat([binned["result"], linear["result"]], ignore_index=True)
-
-    return {
-        "result": result,
-        "binned": binned,
-        "linear": linear,
-    }
-
-
-    # display
 
 def prospective_repair_regimes(
     df,
@@ -1282,9 +1070,6 @@ def prospective_repair_regimes(
     dropna=True,
     terms=("X", "Y", "X^2", "XY"),
     train_cycles=None,
-    n_bins=10,
-    bin_transform="identity",
-    bin_stat="mean",
     ridge=1e-6,
     clip_log_multiplier=10,
     tol=1e-9,
@@ -1296,27 +1081,9 @@ def prospective_repair_regimes(
     details = {}
 
     for regime_name, regime_rule in regimes.items():
-        out = prospective_repair_comparison(
-            df=df,
-            x=x,
-            y=y,
-            cycle_col=cycle_col,
-            holdout_cycle=holdout_cycle,
-            regime=regime_rule,
-            base_mask=base_mask,
-            dropna=dropna,
-            terms=terms,
-            train_cycles=train_cycles,
-            n_bins=n_bins,
-            bin_transform=bin_transform,
-            bin_stat=bin_stat,
-            ridge=ridge,
-            clip_log_multiplier=clip_log_multiplier,
-            tol=tol,
-            balance_tol=balance_tol,
-            std_balance_tol=std_balance_tol,
-            maxiter=maxiter,
-        )
+        out = prospective_repair_comparison(df=df, x=x, y=y, cycle_col=cycle_col, holdout_cycle=holdout_cycle, regime=regime_rule, base_mask=base_mask, dropna=dropna,
+                                            terms=terms, train_cycles=train_cycles, ridge=ridge, clip_log_multiplier=clip_log_multiplier, tol=tol,
+                                            balance_tol=balance_tol, std_balance_tol=std_balance_tol, maxiter=maxiter)
 
         result = out["result"].copy()
         result.insert(0, "regime", regime_name)
@@ -1329,10 +1096,7 @@ def prospective_repair_regimes(
     else:
         result_table = pd.DataFrame()
 
-    return {
-        "result": result_table,
-        "details": details,
-    }
+    return {"result": result_table, "details": details}
 
 
 def prospective_repair_summary(result):
